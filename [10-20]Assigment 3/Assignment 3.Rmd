@@ -1,0 +1,361 @@
+---
+title: "Assignment 3"
+author: "CMSC462"
+date: "2024-10-20"
+output: pdf_document
+---
+
+---
+title: "Assignment 3"
+author: "CMSC462"
+date: "2024-10-07"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#1
+#Note: Add a categorical variable to the dataset for our multiple regression model, 
+#and see if it makes a statistically significant improvement to the model or not,
+
+library(tidyverse)
+library(readxl)
+library(car)
+
+Data <- read_excel("CovidMortality.xlsx")
+CovidData <- data.frame(Data)
+
+head(CovidData)
+
+cat("For this model, the states will be divided between red and blue. The reason
+    this is chosen is because of the varying policies and beliefs of the political
+    parties during the COVID-19 pandemic, which can be easily done since there is
+    already a Political.Affiliation categorical variable in the dataset.
+    Differences between Red and Blue states will be represented in the model
+    estimate.")
+
+  #Split dataset into red and blue
+#RedData <- CovidData[CovidData$Political.Affiliation == "Red",]
+#BlueData  <- CovidData[CovidData$Political.Affiliation == "Blue",]
+
+#RedModel <- lm(Deaths ~ Confirmed+Population+Area+Healthcare.Accessibility,data=RedData)
+#summary(RedModel)
+
+#BlueModel <- lm(Deaths ~ Confirmed+Population+Area+Healthcare.Accessibility,data=BlueData)
+#summary(BlueModel)
+
+#Create first model with all independent variables
+Model <- lm(Deaths~Confirmed+Population+Area+Healthcare.Accessibility+Political.Affiliation, 
+            data = CovidData)
+summary(Model)
+
+cat("From the summary we can see that the model is very inaccurate and not a good model
+    for Deaths as the dependent variable from the given indepdendent variables. Most predictors
+    fail to be statistically significant predictors for 'Deaths', only 'Confirmed'
+    has a p-value less than .05 at 0.0390, and PoliticalAffiliation is very close at 0.0643.
+    All other predictors have very high p-values.
+    However, the F-value is very low at 5.68e-06, which does imply that the model is statistically
+    significant, and at least one predictor is a good predictor for the depdendent variable,
+    reinforcing 'Confirmed.' The Adjusted R-Square not good, at 0.5817 it is much less than 0.7, 
+    meaning that we can expect ~58.17 percent of the variance in 'Deaths' to be explained by the
+    variance  of the predictors in the model, a good R-Square ranges from .7-.9")
+cat("From this summary it is important to see that Population and Area are very very statistically
+    insignificant with p-values of .9519 and .9034, repspectively. This strongly supports that
+    neither are good predictors for the dependent variable 'Deaths.' Intuitively, this makes
+    logical sense since population and area alone for states doesn't tell much about a state's
+    susceptibility to a wide-spread pandemic. To adjust the model, we can add a new variable
+    of population density, which is the Population / Area, then add it to the model to keep
+    the Population and Area data relevant, but in a different form.")
+
+#Density = Population/Area
+CovidData$PopDensity <- CovidData$Population/CovidData$Area
+#Rerun model with Population Density
+Model <- lm(Deaths~Confirmed+PopDensity+Healthcare.Accessibility+Political.Affiliation, 
+            data = CovidData)
+summary(Model)
+
+cat("From this summary we can see that the Adjusted R-Square did improve marginally,
+    up to 0.5948 from 0.5817, and the p-value of Population and Area, combined, improved, 
+    but PopDensity is still widely statistically insignificant at a p-value of 0.8835")
+
+cat("For my own categorical variable, I will import a dataset of vaccinations rates per state
+    for COVID, and define my own thresholds of vaccination rates to determine if a state has
+    Low/Medium/High vaccination rates, then add to the regression model to rerun.")
+
+#Import dataset from https://data.cms.gov/provider-data/dataset/avax-cv19
+#For vaccination percentages for states in the US 
+vaccineData <- read_csv(file = 
+  "C:/Users/criss/Desktop/CMSC462/Assignments/[10-20]Assigment 3/NH_CovidVaxAverages.csv")
+head(vaccineData)
+
+#Categorize rates of vaccinations, split by 20 and 50 percentiles to low/medium/high
+#Mutate dataset to add new attribute
+vaccineData <- vaccineData %>% mutate(vaccineRate = 
+  cut(`Percent of residents who are up-to-date on their vaccines`,
+  breaks = quantile(`Percent of residents who are up-to-date on their vaccines`, 
+  probs = c(0, .20, 0.50, 1)),
+  labels = c("Low", "Medium", "High"),include.lowest = TRUE))
+
+head(vaccineData)
+
+cat("Since the new dataset has state abbreviations instead of full names, I will
+    need to create a mapping between the 2 datasets in order to merge the new
+    categorical variable into the model.")
+
+mapping <- data.frame(
+  Abbreviation = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", 
+                   "HI", "ID", "IL", "IN", "IA", 
+                   "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", 
+                   "NE", "NV", "NH", "NJ", "NM", 
+                   "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", 
+                   "TX", "UT", "VT", "VA", "WA", 
+                   "WV", "WI", "WY"),
+  State = c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+            "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+            "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", 
+            "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+            "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+            "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+            "Ohio", "Oklahoma","Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+            "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
+            "Washington", "West Virginia", "Wisconsin","Wyoming")
+)
+
+#Merge mapping and full names to the vaccine dataset for each entry
+vaccineData <- merge(vaccineData, mapping, by.x="State", by.y="Abbreviation",all.x=TRUE)
+#Replace State column with the full names of states from State.y
+vaccineData <- mutate(vaccineData, State = State.y)
+temp <- vaccineData[,c("State", "vaccineRate")]
+head(vaccineData)
+
+#Merge vaccineRate to CovidData dataset as a new column
+CovidData <- merge(CovidData, temp, by="State", all.x=TRUE)
+CovidData$vaccineRate <- as.factor(CovidData$vaccineRate)
+head(CovidData)
+
+#Rerun model with vaccineRate categorical variable
+Model <- lm(Deaths~Confirmed+PopDensity+Healthcare.Accessibility+Political.Affiliation+
+              vaccineRate, data = CovidData)
+summary(Model)
+
+cat("Alas, the model does not improve with this new categorical variable of vaccine
+    rates from the percentages of residents who received vaccines for COVID-19 up to
+    2024. The R-Squared value drops to 0.5714 from the previously calculated 0.5948,
+    and the p-value for the vaccineRate predictor is very high, at 0.7185 for a 
+    'medium' vaccine rate, and 0.9785 for a 'high' vaccineRate.")
+
+#Calculate correlation between predictors to remove from the model 
+correlation_matrix <- cor(CovidData[, sapply(CovidData, is.numeric)])
+correlation_matrix
+
+cat("If we look at the correlation matrix, we see that from the quantitative predictors,
+    Population is highly correlated with other predictors, namely 'Confirmed' at a correlation
+    of .955. We have already removed Population from the model and replaced it with
+    PopDensity, therefore no changes needed at this time in regards to correlated predictors.
+    Confirmed is highly correlated with deaths, but it is a very significant predictor
+    for the model, therefore it is kept as the exception predictor.")
+
+Model <- lm(Deaths~Confirmed+Political.Affiliation+vaccineRate, data = CovidData)
+summary(Model)
+cat("If we remove the statistically insignificant predictors except for Confirmed,
+    Political Affiliation, and the new vaccineRate, the model is in its best shape
+    with an adjusted R-Square of 0.6018 and statistically significant predictors 
+    'Confirmed' and 'Political.Affiliation' both with p-values less than .05. If we choose
+    this to be the final model, then we can describe the model as such:
+    For every state there were a total of 2568 base deaths, for every confirmed
+    case of COVID-19 0.02902 deaths occur, Red states expect 3816 less deaths than
+    blue states, states with Medium vaccination rates expect 774.1 less deaths
+    than states with Low vaccination rates, and states with High vaccination rates
+    expect 202.8 more deaths than states with Medium vaccination rates. Note that
+    the intercept and vaccineRates are not good predictors of Deaths because of
+    their p-values.
+    
+    Equation: 2568 + .02902x1 - 3816x2 - 774.1x3 + 202.8x4
+    x1 = Confirmed cases
+    x2 = Red or Blue state(1 or 0, 1=Red)
+    x3 = Medium Vaccine rate(1 or 0, 1=yes)
+    x4 = High Vaccine rate(1 or 0, 1=yes)
+    
+    Adjusted R-Square: 0.6018
+    Implies ~60.18 percent of the variance in deaths is explained by the variance
+    in the selected predictors; the model is statistically significant with
+    an F-value < .05, but the fit of the model is not strong.")
+```
+
+```{r}
+#2
+#Draw the ROC, which is install.packages("pROC"), and then generates a graph of true positives
+#divided by true positives+false negatives, and false positives divided by false positives and true negatives
+#install.packages("ROCR")
+library(pROC)
+library(ROCR)
+library(e1071)
+library(caret)
+
+#Import data
+Data <- read_csv(file = 
+  "C:/Users/criss/Desktop/CMSC462/Assignments/[10-20]Assigment 3/Lending.csv")
+head(Data)
+
+#(1) - Descriptive Statistics
+summary(Data)
+
+#Histogram + curve of loan amount, superimposed normal curve
+hist(Data$loan_amnt, probability=TRUE, main = "Histogram of Loan Amount", xlab="Loan Amount")
+lines(density(Data$loan_amnt), col = 2, lwd = 2)
+curve(dnorm(x, mean=mean(Data$loan_amnt), sd=sd(Data$loan_amnt)), 
+      lwd=2, col="blue", add=TRUE)
+
+#Histogram + curve of adjusted annual income, superimposed normal curve
+hist(Data$adjusted_annual_inc, probability=TRUE, main = "Histogram of Annual Income", 
+     xlab="Annual Income", xlim=c(-20000,100000),ylim=c(0,0.000028),
+     breaks=c(-20000,0,10000,20000,30000,
+              40000,50000,60000,70000,
+              80000,90000,100000,10000000))
+lines(density(Data$adjusted_annual_inc), col = 2, lwd = 2)
+curve(dnorm(x, mean=mean(Data$adjusted_annual_inc), sd=sd(Data$adjusted_annual_inc)), 
+      lwd=2, col="blue", add=TRUE)
+
+#Histogram of loan default
+hist(Data$loan_default, probability=TRUE, main="Histogram of Loan Default",
+     xlab="Loan Default")
+
+cat("We can see that the data is pretty skewed from the summary statistics and the
+    histograms with superimposed normal curves of the loan amounts and adjusted annual
+    incomes. We can also see that the entries in the data are extremely unbalanced
+    when viewing the loan_default histogram, with loan_default=0 being much more
+    common that loan_default=1 for most entries. To resolve this we resample the 
+    data inorder to balance the entries with default=0 and default=1")
+
+#From the dataset, take 2000 random samples where there is a default=1 and default=0
+#Create a new dataset from the samples to balance the data, and use that dataset for the model
+#The balanced data set will see a great fall in accuracy
+set.seed(1)
+Lending = rbind(sample_n(filter(Data, loan_default==1), 2000), 
+                sample_n(filter(Data, loan_default==0), 2000))
+
+#Convert categorical data to factor
+Lending$residence_property <- as.factor(Lending$residence_property)
+
+hist(Lending$loan_default, probability=TRUE, main="Histogram of balanced Loan Default",
+     xlab="Loan Default")
+
+#(2) Naive Bayes Model
+# Sample of 75% of the data used to train
+train_ind<- sample(1:nrow(Lending), size = (0.75 * nrow(Lending)))
+
+#Separate data into training and testing, 75% training set is excluded from test set
+train <- Lending[train_ind,]
+test <- Lending[-train_ind,]
+
+#Naive bayes model
+NB <- naiveBayes(loan_default ~ ., data=train)
+NB
+
+#Predictions from Naive Bayes model using test dataset
+predictions <- predict(NB, newdata = test)
+
+#Confusion matrix of results
+confusion_matrix <- table(predictions, test$loan_default)
+confusion_matrix
+confusionMatrix(confusion_matrix)
+
+cat("297 True positives
+    298 True negatives
+    208 False positives
+    197 False negatives")
+    #predictionsRaw <- predict(NB, newdata = test, type = "raw")
+    #predictionsRaw 
+
+#Calculate accuracy from CM
+NB_accuracy <- mean(predictions == test$loan_default)
+NB_accuracy
+
+cat("This Naive Bayes model classifies whether or not a person obtains a loan in
+    the categorical variable loan_default, where 1=loan received and 0=no loan given.
+    From the various attrbutes of each person, the model predicts if a person receives
+    a loan, classifying them. The accuracy of the model is very low at 0.595, due to
+    our balancing of the original dataset.")
+
+
+#(2) Logit Model
+Loan_logit <- glm(loan_default ~ ., data = train, family = "binomial")
+summary(Loan_logit)
+
+#Predictions of logit model and threshold of .5
+logit_probabilities <- predict(Loan_logit, newdata = test, type = "response")
+logit_preds <- ifelse(logit_probabilities > 0.5, 1, 0)
+
+#Confusion matrix
+logit_cm <- table(Predicted = logit_preds, Actual = test$loan_default)
+logit_cm
+confusionMatrix(logit_cm)
+
+cat("300 True positives
+    304 True negatives
+    202 False positives
+    194 False negatives
+    The accuracy is quite low at 0.604, because we balanced the original dataset.")
+
+#(3) Model accuracy comparison and ROC curves
+
+cat("The Naive Bayes model yielded an accuracy of 0.595 while the logistic regression
+    model yielded an accuracy of 0.604. The logit model is marginally more accurate
+    than the NB model, therefore we can say that the logit model is a better fit
+    for predicting whether or not a person accurately receives a loan from loan_default.
+    To further analyze the models we must compute the ROC curve and AuC from the ROCs.")
+
+#Naive Bayes ROC and AuC
+NB_prob <- predict(NB, newdata = test, type = "raw")
+NB_pred <- prediction(NB_prob[,2], test$loan_default)
+NB_perf <- performance(NB_pred, measure = "tpr", x.measure = "fpr")
+#following order: bottom, left, top, and right. 
+par(mar=c(5,8,1,.5))
+#Receiver operating characteristic
+plot(NB_perf, col="red",main="Naive Bayes ROC")
+abline(a=0, b=1)
+auc <- performance(NB_pred, measure = "auc") #Calculates AuC
+auc <- auc@y.values[[1]]
+auc
+
+cat("The ROC curve for the Naive Bayes model is not very strong, since it is closer
+    to the reference line than the top left of the plot, and we observe from the 
+    calculated AuC value of 0.6280704, that ~62.81% of the time the model accurately
+    distinguishes a person with positives traits to having a loan_default=1 over a person
+    with negative traits. A good AuC value for a model is, .8, and .5 means the model is 
+    compeltely random, therefore we can conclude that the NB model has very low efficacy 
+    and is a bad/weak classifier for loan_default.")
+
+#Logistic regression ROC and AuC
+logit_prob <- predict(Loan_logit, newdata = test, type = "response")
+logit_pred <- prediction(logit_prob, test$loan_default)
+logit_perf <- performance(logit_pred, measure = "tpr", x.measure = "fpr")
+#following order: bottom, left, top, and right. 
+par(mar=c(5,8,1,.5))
+#Receiver operating characteristic
+plot(logit_perf, col="red", main="Logistic Regression ROC")
+abline(a=0, b=1)
+auc <- performance(logit_pred, measure = "auc") #Calculates AuC
+auc <- auc@y.values[[1]]
+auc
+
+cat("The ROC curve for the Naive Bayes model is not very strong, since it is closer
+    to the reference line than the top left of the plot, and we observe from the 
+    calculated AuC value of 0.6412003, that ~64.12% of the time the model accurately
+    distinguishes a person with positives traits to having a loan_default=1 over a person
+    with negative traits. A good AuC value for a model is, .8, and .5 means the model is 
+    compeltely random, therefore we can conclude that the NB model has very low efficacy 
+    and is a bad/weak classifier for loan_default.")
+
+cat("While both models are very bad classifiers for loan_default, the ROC curves
+    for both models are very similar, but the AuC for the logit model is a bit 
+    higher than the Naive Bayes model, at 0.6412003 > 0.6280704. Therefore we can
+    say that the logit model has a higher efficacy and likelihood to ranking
+    positive instsances higher than negative instances compared to the NB model.
+    Where ranking details which people receive loans and which people do not, based
+    on their positive or negative predictors.")
+
+```

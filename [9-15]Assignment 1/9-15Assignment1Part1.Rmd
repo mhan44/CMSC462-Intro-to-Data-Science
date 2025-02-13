@@ -1,0 +1,38 @@
+---
+title: "9-15 CMSC462 Assignment 1 Part 1"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-09-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("readxl")
+```
+
+```{r}
+library(readxl)
+
+#In order to read a specific block of data from the excel sheet, you need to first 
+#import the exact name of the excel file, and then #specify the range of cells
+#you want to import. 
+#X <- read_excel(file_path, range=anchored('starting cell = column #letter + row number', 
+#dim = dimensions of your range c(row height, column width) ))
+
+#freqdata <- read_excel("[9-15] StudentsTestScore.xlsx",          
+#range = anchored('E6', dim = c(6,1)))
+#dataframe <- data.frame(freqdata)
+#dataframe
+#as.numeric(dataframe[,1])
+
+data <- read_excel("9-15StudentsTestScore.xlsx",
+                       range = anchored('B1', dim = c(1001,1)))
+dataframe2 <- data.frame(data) #convert excel file to dataframe
+Student_scores <- as.numeric(dataframe2[,1]) #[,1] denotes all rows, 1 column
+#hist(Student_scores,breaks= c(0,59,69,79,89,100))
+hist(Student_scores,breaks= c(0,9,19,29,39.49,59,69,79,89,100)) #histogram with breaks(ranges)
+
+
+```
+

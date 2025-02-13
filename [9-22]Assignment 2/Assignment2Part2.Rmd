@@ -1,0 +1,120 @@
+---
+title: "Assignment2"
+author: "CMSC462"
+date: "2024-09-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+
+#Read data, and display sample of dataset
+Data = read_csv(file = "C:/Users/criss/Desktop/CMSC462/Assignments/[9-22]Assignment 2/myData.csv")
+Data
+
+#create an empty vector to store the point estimates of the samples to be taken for x&y, 
+#first 5 elements will be of sample 25, later 5 elements will be of sample 100. 
+meanx <- c()
+meany <- c()
+sdx <- c()
+sdy <- c()
+
+for(i in 1:10){ #iterate 10 times
+  if(i<6){
+    meanx[i] = mean(sample(Data$x,25)) #populate first 5 elements with PE of random sample of 25
+    meany[i] = mean(sample(Data$y,25))
+    sdx[i] = sd(sample(Data$x,25))
+    sdy[i] = sd(sample(Data$y,25))
+    
+  }else{
+    meanx[i] = mean(sample(Data$x,100)) #populate last 5 element with PE of random sample of 100
+    meany[i] = mean(sample(Data$y,100))
+    sdx[i] = sd(sample(Data$x,100))
+    sdy[i] = sd(sample(Data$y,100))
+  }
+}
+meanx
+meany
+
+#Calculate 95% CI for x and y, by applying 95% CI = Xbar +- 1.96*(s/sqrt(n))
+
+#Upper and lower limit for 25 samples:
+UL_X_25 <- c()
+UL_Y_25 <- c()
+LL_X_25 <- c()
+LL_Y_25 <- c()
+
+#Apply the confidence interval formula for 95% confidence: Xbar +- 1.96(sd/sqrt(n))
+for(i in 1:5){
+  UL_X_25[i] = meanx[i] + (1.96)*(sdx[i] / sqrt(25))
+  UL_Y_25[i] = meany[i] + (1.96)*(sdy[i] / sqrt(25))
+  LL_X_25[i] = meanx[i] - (1.96)*(sdx[i] / sqrt(25))
+  LL_Y_25[i] = meany[i] - (1.96)*(sdy[i] / sqrt(25))
+}
+
+#Upper and lower limit for 100 samples:
+UL_X_100 <- c()
+UL_Y_100 <- c()
+LL_X_100 <- c()
+LL_Y_100 <- c()
+
+for(i in 6:10){
+  UL_X_100[i-5] = meanx[i] + (1.96)*(sdx[i] / sqrt(100))
+  UL_Y_100[i-5] = meany[i] + (1.96)*(sdy[i] / sqrt(100))
+  LL_X_100[i-5] = meanx[i] - (1.96)*(sdx[i] / sqrt(100))
+  LL_Y_100[i-5] = meany[i] - (1.96)*(sdy[i] / sqrt(100))
+}
+
+UL_X_25 
+UL_Y_25 
+LL_X_25 
+LL_Y_25
+
+UL_X_100
+UL_Y_100 
+LL_X_100 
+LL_Y_100
+
+# Create a 2x4 matrix to display the intervals
+table <- matrix(nrow = 4, ncol = 2)
+
+# Name the columns and rows appropriately
+colnames(table) <- c('Lower limit', 'Upper limit')
+rownames(table) <- c('X 25 sample', 'Y 25 sample', 'X 100 sample', 'Y 100 sample')
+
+# Calculate the means of each upper limit and lower limit for the CI's
+limits <- c(mean(LL_X_25), mean(UL_X_25), 
+            mean(LL_Y_25), mean(UL_Y_25), 
+            mean(LL_X_100), mean(UL_X_100), 
+            mean(LL_Y_100), mean(UL_Y_100))
+
+# Fill the table with the calculated means
+table[,] <- matrix(limits, nrow = 4, byrow = TRUE)
+
+# Convert to table
+limits_table <- as.table(table)
+limits_table
+
+
+
+
+#Calculate actual population means 
+mean(Data$x)
+mean(Data$y)
+
+cat("As we can see, the actual mean for x is ~50.01, and the actual mean for y
+      is ~10, for the population. Both of these values fall into their sampled
+      95% confidence intervals, for both 25 samples and 100 samples. 50.01 falls
+      into the 25 x sample: (40.82,64.43) CI and into the 100 x sample: 
+      (42.79, 54.29) CI. And 10 falls into the 25 y sample: (9.06,11.42) CI and
+      into the 100 y sample: (9.22, 10.41) CI. We can observe that for both X
+      and Y, the 100 sample confidence intervals are more accurate in regards to
+      the population mean, because both upper and lower limits are closer to the
+      true mean compared to the 25 sample intervals.")
+```
+

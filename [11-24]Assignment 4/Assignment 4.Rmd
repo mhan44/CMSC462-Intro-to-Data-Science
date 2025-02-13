@@ -1,0 +1,88 @@
+---
+title: "Assignment 4"
+author: "CMSC462"
+date: "2024-11-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(arules)
+library(arulesViz)
+library(readxl)
+library(plyr)
+library(ggplot2)
+
+Data <- read_excel("BreadBasket_DMS.xlsx")
+df <- data.frame(Data)
+df$Item <- as.factor(df$Item)
+df$Transaction <- as.factor(df$Transaction)
+head(df)
+
+# Convert the data into transaction format, split items by transaction
+Cafe <- split(df$Item, df$Transaction)
+head(Cafe)
+
+# Convert to transaction object for arules package
+Cafe_transactions <- as(Cafe, "transactions")
+head(Cafe_transactions)
+
+# 1 - Descriptive statistics - Summary, Absolute Item Frequency Histogram 
+
+summary(df)
+
+# Calculate absolute item frequency
+absolute_frequencies <- itemFrequency(Cafe_transactions, type = "absolute")
+absolute_freq_df <- data.frame(
+  Item = names(absolute_frequencies),
+  Frequency = absolute_frequencies)
+
+# Sort and filter top 10 items
+top_10_items <- absolute_freq_df[order(-absolute_freq_df$Frequency), ][1:10, ]
+
+# Plot top 10 items with ggplot2
+ggplot(top_10_items, aes(x = reorder(Item, Frequency), y = Frequency)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Top 10 Items by Frequency", x = "Items", y = "Frequency")
+
+# 2 - Do a market basket analysis and uncover the association rules. Among the association
+# rules, filter out any rule with “Coffee” on the right-hand side. Also, set the maxlen as 3
+# or 4 and minlen as 2. Next, choose a metrics and using it select top five rules and
+# describe those. Do those rules make sense?
+
+# Generate association rules
+rules <- apriori(
+  Cafe_transactions,
+  parameter = list(support = 0.001, confidence = 0.1, maxlen = 4, minlen = 2)
+)
+
+# Filter rules with Coffee on rhs
+filtered_rules <- subset(rules, rhs %in% "Coffee")
+
+# Exclude rules where Coffee is on rhs
+rules_no_coffee_rhs <- subset(rules, !(rhs %in% "Coffee"))
+inspect(rules_no_coffee_rhs[1:20])
+
+# Sort top 5 rules by lift
+top_rules <- head(sort(rules_no_coffee_rhs, by = "lift"), 5)
+
+# Display the top 5 rules
+inspect(top_rules)
+
+cat("High Lift indicates strong association; rules with high lift show strong correlation
+    between lhs and rhs. 
+    1. Customers who purchase both coffee and salad are 56.64 times more likely to 
+    also add 'Extra Salami or Feta' than would be expected at random.
+    2. Customers who purchase both coffee and 'Extra Salami or Feta' are 43.48 times 
+    more likely to include a salad in their purchase than would be expected at random.
+    3. Customers who purchase a salad are 40.54 times more likely to also purchase 
+    'Extra Salami or Feta' than would be expected at random. 
+    4. Customers ordering 'Extra Salami or Feta' are 40.54 times more likely to 
+    include a salad than would be expected at random. 
+    5. Customers who purchase Alfajores and cookies are 11.35 times more likely to 
+    include juice in their purchase than would be expected at random.
+    ")
+```

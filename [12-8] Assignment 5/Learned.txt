@@ -1,0 +1,98 @@
+* Can drop collections like in SQL with tables
+* Tables are called collections in MongoDB
+* Rows are called records in MongoDB
+* To create a database you call the get() function, which will retrieve the database of the selected name, or create if it does note exist
+* Read csv files from the same directory of the Jupyter notebook using Panda as pd: movies = pd.read_csv("filename.csv")
+* Create collections(tables) using db.create_collection("movies")
+* Can retrieve the names of all collections in the database using db.list_collection_names(), allowing you to check if a collection already exists
+or not before creating.
+* Insert records(rows) into a collection from a CSV file using db.movies.insert_many(movies.to_dict('records'))
+* Can insert individual records into a collection using 
+db.movies.insert_one({"movieId": 200000, "title": "SomeMovie1", "genres": "Action|Sci-Fi"})
+* Can insert multiple reocrds into a collection using 
+my_ratings = [
+    {"userId": ------},
+    {"userId": ------},
+    {"userId": ------},
+]
+db.ratings.insert_many(my_ratings)
+
+*Aggregation is querying in MongoDB, it follows a sequence of stages to process large data
+*Operators: 
+	- Arithmetic: $add, $subtract, $multiply, etc
+	- Comparison: $eq, $gte, $lt, etc
+	- Array: $size, $arrayElemAt, etc
+
+*3 Types of aggregation:
+	- Single: e.g. count
+	- Pipeline: flexible, for complex queries
+	- Map-reduce: custom complex aggregations using javascript (no longer supported)
+
+*Aggregation pipeline format:
+	- { <operator> : [ <argument1>, <argument2>, ... ] }
+	- Single: { < operator> : <argument> }
+
+*Pipeline stages:
+$match: Filters the documents in the input based on a specified condition.
+	- Like WHERE clause in SQL
+$project: Reshapes the documents in the input by selecting or excluding fields, computing new fields, or rearranging existing fields.
+	- Like SELECT for certain tables in SQL
+$group: Groups the documents in the input based on a specified key, and computes aggregate values for each group.
+	- Like GROUP BY in SQL
+$sort: Sorts the documents in the input based on a specified field or fields.
+$limit: Limits the number of documents in the output.
+$skip: Skips a specified number of documents in the input.
+$count - Passes a document to the next stage that contains a count of the number of documents input to the stage
+
+*Example pipeline:
+db.collection.aggregate([  
+{ $match: { status: "A" } },  
+{ $group: { _id: "$category", total: { $sum: "$amount" } } },  
+{ $sort: { total: -1 } },  { $limit: 10 }
+])
+
+*When using $group stage in the pipeline, you can determine what key to group by for each record in the collection, this is done by using
+"some_name" , where the following string/expression is the key to group each record by. "_id" is a unique field reference that uses existing
+attributes to group by.
+	- "$group": {"_id": "$movieId"}
+
+*$substrCP is an operator that returns a substring from a string, where you define the start character from the string and how many characters
+the substring will return from the start point, sequentially starting from the first index after the starting point
+	- { $substrCP: [ <string>, <start>, <length> ] }
+	- $substr is deprecated
+
+*$substrCP and mongoDB does not support negative indexing
+
+*pd is a dataframe, access entries in the dataframe using .loc[index, 'column_name]
+
+*$sum can be used to count the appearance of a key in a collection, using "$sum":x, we can increment the count and add the value x to the total 
+for each appearance.
+
+*Fields are custom variables that we define using $<operators>, they are defined using double quotes and curly braces, returning whatever
+results from the inner operation 
+	- "SomeOperationResult":{ <operations> }
+
+*Fields are defined under/within a $ stage. 
+
+*$sort stage uses an id or defined field, 1 for ascending order -1 for descending
+
+*Can use $match to find specific records where the value is true for an expression/comparison
+
+*$ne = not equal
+
+*$project stage transforms the collection/document, by inncluding or excluding specific fields in the output document, transforming fields,
+creating new fields, or renaming
+
+*$split operator splits an input string by a given delimiter, returning an array of elements from the string
+
+*$unwind stage takes an array field(variable) of a document and creates individual entries of that document with each element of the input array.
+Allowing for easier computation for the individual elements of the array rather than the whole array itself. The resulting records are used
+in the input for the next aggregation pipeline stage.
+
+*You can use "_id" in $group to group every single record into one category by setting "_id" to None
+
+*$limit limits the final result of the aggregation pipeline to a defined number of documents after the previous stage is complete, if combined
+with sort, the pipeline will return the max or min of the aggregation
+
+*next() returns the next item from an iterator or iterable. The result of an aggregation pipeline is an iterator object, therefore next() retrieves
+the first element on first call.
